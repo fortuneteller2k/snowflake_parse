@@ -1,26 +1,30 @@
 import os, strformat, strutils, times
 
-proc snowflake_parse(s: string, epoch: int64) =
-  let
-    snowflake: int64 = s.parseInt()
-    timestamp: DateTime = fromUnix(((snowflake shr 22) + epoch) div 1000).utc
-    worker_id: int64 = (snowflake and 0x3e0000) shr 17
-    process_id: int64 = (snowflake and 0x1f000) shr 12
-    
-  echo(&"Binary representation: {snowflake.toBin(64)}")
-  echo(&"Timestamp: {timestamp}")
+type Snowflake = object
+  content: int64
+  epoch: int64
 
-  if worker_id != 0:
-    echo(&"Worker ID: {worker_id}")
+method getContent(this: Snowflake): int64 = this.content
+method getEpoch(this: Snowflake): int64 = this.epoch
+method getTimestamp(this: Snowflake): DateTime = fromUnix(((this.content shr 22) + this.epoch) div 1000).utc
+method getWorkerId(this: Snowflake): int64 = (this.content and 0x3e0000) shr 17
+method getProcessId(this: Snowflake): int64 = (this.content and 0x1f000) shr 12
 
-  if process_id != 0:
-    echo(&"Process ID: {process_id}")
+method prettyPrint(this: Snowflake) =
+  echo(&"Binary representation: {this.getContent().toBin(64)}")
+  echo(&"Timestamp: {this.getTimestamp()}")
+
+  if this.getWorkerId() != 0:
+    echo(&"Worker ID: {this.getWorkerId()}")
+
+  if this.getProcessId() != 0:
+    echo(&"Process ID: {this.getProcessId()}")
 
 when isMainModule:
-  var input: seq[TaintedString] = commandLineParams()
+  let input: seq[TaintedString] = commandLineParams()
 
   try: 
-    snowflake_parse(input[0], 1420070400000)
+    Snowflake(content: input[0].parseInt(), epoch: 1420070400000).prettyPrint()
   except:
     echo("usage: snowflake_parse [snowflake]")
     quit(QuitFailure)
